@@ -1,0 +1,6 @@
+{
+	"appId": "io.ionic.starter",
+	"appName": "local-chess-frontend",
+	"webDir": "dist",
+	"bundledWebRuntime": false
+}
