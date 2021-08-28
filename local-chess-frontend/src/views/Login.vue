@@ -26,22 +26,70 @@
 <script lang="ts">
 import { IonPage, IonContent, IonInput, IonButton, IonGrid, IonRow, IonCol, IonImg, IonTitle, alertController } from '@ionic/vue';
 import { useSocketStore } from '../stores/socket'
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Geolocation } from '@capacitor/geolocation'
+import axios from 'axios';
 
 export default  {
   name: 'Login',
   components: { IonContent, IonPage, IonInput, IonButton, IonGrid, IonRow, IonCol, IonImg, IonTitle },
   setup() {
+    type CityData = {
+      city: string;
+      latitude: number;
+      longitude: number;
+    }
     const socketStore = useSocketStore()
     const router = useRouter()
 
     const username = ref<string>('')
     const logo = 'assets/king.png'
+    const cityData = ref<CityData>()
 
 
-    const join = () => {
-      socketStore.socket.emit('join', username.value)
+
+    const addGeolocation = async () => {
+      try {
+        const coordinates = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true
+        })
+
+        console.log(coordinates)
+
+      const params = {
+        //@ts-ignore
+        auth: process.env.VUE_APP_GEOCODE,
+        locate: `${coordinates.coords.latitude},${coordinates.coords.longitude}`,
+        json: '1'
+      }
+
+        const cityData = await axios.get('https://geocode.xyz', {params})
+        socketStore.latitude = coordinates.coords.latitude
+        socketStore.longitude = coordinates.coords.longitude
+        return {city: cityData.data.city, latitude: coordinates.coords.latitude, longitude: coordinates.coords.longitude};
+        //socketStore.socket.emit('update-location', {city: cityData.data.city, latitude: coordinates.coords.latitude, longitude: coordinates.coords.longitude})
+      } catch (error) {
+        console.error('Error', error)
+      }
+    }
+
+    const join = async () => {
+      if(cityData.value === undefined) {
+        const alert = await alertController.create({
+        header: 'Geolocation',
+        message: 'Wait for the app to find your geolocation before joining.',
+        buttons: [
+          {
+            text: 'Ok',
+          }
+        ]
+      })
+      alert.present()
+      return
+      }
+      //const cityData = await addGeolocation();
+      socketStore.socket.emit('join', {name: username.value, ...cityData.value})
     }
 
     socketStore.socket.on('login-success', (username) => {
@@ -61,6 +109,11 @@ export default  {
       socketStore.loggedIn = false
       const alert = await alertController.create({header: 'Error', subHeader: 'Duplicate username', message: 'Sorry, this username is already in use!', buttons: ['OK'],})
       await alert.present()
+    })
+
+
+    onMounted(async () => {
+      cityData.value = await addGeolocation();
     })
 
     return { username, join, logo }

@@ -139,25 +139,7 @@ export default {
       console.log(board.orientation)
       router.push('/tabs/chessboard')
     })
-
-    socketStore.socket.on('challenge-denied', async () => {
-      socketStore.opponent = ''
-      socketStore.gameInProgress = false
-      socketStore.color = 'black'
-      game.reset()
-      board.position(game.fen())
-      const alert = await alertController.create({
-        header: 'Challenge denied',
-        message: 'Your challenge has been denied.',
-        buttons: [
-          {
-            text: 'Ok',
-          }
-        ]
-      })
-      alert.present()
-    })
-
+    
     socketStore.socket.on('opponent-disconnect', async (username) => {
       socketStore.opponent = '' 
       socketStore.gameInProgress = false

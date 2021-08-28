@@ -84,7 +84,6 @@ http://ionicframework.com/docs/theming/ */
     --ion-color-button-tint: #ffffff;
 }
 
-@media (prefers-color-scheme: dark) {
   /*
    * Dark Colors
    * -------------------------------------------
@@ -260,4 +259,3 @@ http://ionicframework.com/docs/theming/ */
   ion-button {
     text-transform: none;
   }
-}

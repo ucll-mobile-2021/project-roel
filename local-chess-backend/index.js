@@ -1,8 +1,5 @@
-const io = require('socket.io')(3000, {
-  cors: {
-    origin: ['http://localhost:8100'],
-  }
-})
+const http = require('http').createServer();
+const io = require('socket.io')(http, { cors: '*' })
 
 let users = []
 
@@ -27,21 +24,34 @@ io.on('connection', socket => {
     io.to(socket.id).emit('logout-success')
   })
 
-  socket.on('join', (username) => {
-    if(!validUsername(username)) {
+  socket.on('join', (user) => {
+    console.log(user)
+    if(!validUsername(user.name)) {
       io.to(socket.id).emit('duplicate-username')
       return
     }
 
-    validId(socket.id) ? users.push({id: socket.id, username, inProgress: false, opponent: ''}) : users[users.map((user) => user.id).indexOf(socket.id)].username = username
+    validId(socket.id) ? users.push({id: socket.id, username: user.name, inProgress: false, opponent: '', city: user.city, latitude: user.latitude, longitude: user.longitude}) : users[users.map((u) => u.id).indexOf(socket.id)].username = user.name
 
-    io.to(socket.id).emit('login-success', username)
-    io.emit('user-connect', username)
+    io.to(socket.id).emit('login-success', user.name)
+    io.emit('user-connect', {name: user.name, city: user.city, longitude: user.longitude, latitude: user.latitude})
+  })
+
+  socket.on('update-location', (locationInformation) => {
+    console.log(`${socket.id} : city: ${locationInformation.city}, latitude: ${locationInformation.latitude}, longitude: ${locationInformation.longitude} `)
+    const user = findById(socket.id)
+    users = users.map((user) => {
+      if(user.id === socket.id) {
+        return {id: user.id, username: user.username, inProgress: user.inProgress, opponent: user.opponent, city: locationInformation.city, latitude: locationInformation.latitude, longitude: locationInformation.longitude}
+      }
+      return user
+    })
+    io.emit('update-user', {name: user.username, city: locationInformation.city})
   })
 
   socket.on('get-online-users', () => {
     console.log(`${socket.id} : get-online-users`)
-    io.to(socket.id).emit('online-users', users.filter((user) => user.id !== socket.id).map((user) => user.username))
+    io.to(socket.id).emit('online-users', users.filter((user) => user.id !== socket.id).map((user) => { return {name: user.username, city: user.city, longitude: user.longitude, latitude: user.latitude}}))
   })
 
   socket.on('make-move', (userMove) => {
@@ -89,7 +99,7 @@ io.on('connection', socket => {
 function setOpponent(id, opponent) {
   users = users.map((user) => {
     if(user.id === id) {
-      return {id: user.id, username: user.username, inProgress: user.inProgress, opponent: opponent}
+      return {id: user.id, username: user.username, inProgress: user.inProgress, opponent: opponent, city: user.city, latitude: user.latitude, longitude: user.longitude}
     }
     return user
   })
@@ -114,3 +124,5 @@ function findById(id) {
   const user = users.find((user) => user.id === id)
   return user
 }
+
+http.listen(3000, '0.0.0.0');
